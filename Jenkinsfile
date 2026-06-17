@@ -1,4 +1,4 @@
-pipeline {
+ pipeline {
     agent any
 
     environment {
@@ -8,16 +8,11 @@ pipeline {
 
     stages {
 
-        stage('Checkout') {
-            steps {
-                git branch: 'master',
-                url: 'https://github.com/burakorkmez/mern-ecommerce.git'
-            }
-        }
-
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t $IMAGE_NAME:$IMAGE_TAG .'
+                sh '''
+                docker build -t $IMAGE_NAME:$IMAGE_TAG .
+                '''
             }
         }
 
@@ -37,9 +32,29 @@ pipeline {
             }
         }
 
-        stage('Push Image') {
+        stage('Push Docker Image') {
             steps {
-                sh 'docker push $IMAGE_NAME:$IMAGE_TAG'
+                sh '''
+                docker push $IMAGE_NAME:$IMAGE_TAG
+                '''
+            }
+        }
+
+        stage('Deploy To Kubernetes') {
+            steps {
+                sh '''
+                kubectl set image deployment/ecommerce-app \
+                ecommerce-app=$IMAGE_NAME:$IMAGE_TAG \
+                -n ecommerce
+                '''
+            }
+        }
+
+        stage('Verify Rollout') {
+            steps {
+                sh '''
+                kubectl rollout status deployment/ecommerce-app -n ecommerce
+                '''
             }
         }
     }
